@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { config as loadEnv } from 'dotenv';
 import { closePool, query, withTransaction } from '../src/server/db';
-import { hashPassword } from '../src/server/password';
+import { hashPassword, verifyPassword } from '../src/server/password';
 
 loadEnv({ path: '.env', quiet: true });
 
@@ -54,17 +54,45 @@ async function main() {
 
   console.log(count === 0 ? 'schema already up to date' : `${count} migration(s) applied`);
 
-  // Seed the owner account if it does not exist yet.
+  // The OWNER_EMAIL / OWNER_PASSWORD variables are the source of truth for
+  // the owner account. The account is created from them if it is missing,
+  // and its password is brought back into line with them if they differ.
+  //
+  // That second part is what makes a forgotten administrator password
+  // recoverable: change the variable where the application is hosted,
+  // redeploy, and the next start resets it. Without it the only route back
+  // in would be editing the database by hand.
   const email = process.env.OWNER_EMAIL;
   const password = process.env.OWNER_PASSWORD;
+
   if (email && password) {
-    const existing = await query('SELECT id FROM users WHERE lower(email) = lower($1)', [email]);
+    const existing = await query<{ id: string; password_hash: string; role: string }>(
+      'SELECT id, password_hash, role FROM users WHERE lower(email) = lower($1)',
+      [email],
+    );
+
     if (existing.length === 0) {
       await query(
         `INSERT INTO users (email, password_hash, role, display_name) VALUES ($1, $2, 'owner', $3)`,
         [email, await hashPassword(password), 'Owner'],
       );
       console.log(`created owner account ${email}`);
+    } else {
+      const owner = existing[0];
+      // Only rewrite the hash when the configured password no longer opens
+      // the account, so an unchanged variable does not churn it on every
+      // deployment.
+      if (!(await verifyPassword(password, owner.password_hash))) {
+        await query('UPDATE users SET password_hash = $2 WHERE id = $1', [
+          owner.id,
+          await hashPassword(password),
+        ]);
+        console.log(`owner password for ${email} reset to match OWNER_PASSWORD`);
+      }
+      if (owner.role !== 'owner') {
+        await query(`UPDATE users SET role = 'owner' WHERE id = $1`, [owner.id]);
+        console.log(`restored owner role for ${email}`);
+      }
     }
   } else {
     console.log('OWNER_EMAIL / OWNER_PASSWORD not set; no owner account created');

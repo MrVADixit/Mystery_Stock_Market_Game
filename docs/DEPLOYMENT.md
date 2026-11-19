@@ -148,6 +148,23 @@ without them:
 - `pruneAuthSessions()` — removes expired sessions.
 - `pruneRateLimits()` — removes stale rate-limit buckets.
 
+### If you forget the administrator password
+
+The `OWNER_EMAIL` and `OWNER_PASSWORD` variables are the source of truth for
+that account. Changing `OWNER_PASSWORD` where the application is hosted and
+redeploying resets it on the next start — the migration brings the stored
+password back into line with the variable.
+
+On Render: **Environment** → edit `OWNER_PASSWORD` → **Save**, which triggers a
+redeploy. The build log will say:
+
+```
+owner password for you@example.com reset to match OWNER_PASSWORD
+```
+
+Leaving the variable unchanged does nothing, so this costs nothing on an
+ordinary deployment.
+
 ### Backups
 
 The data worth protecting is the ledger: `transactions`, `audit_events`,
