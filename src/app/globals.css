@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --concrete: #29282f;
+  --surface: #34323c;
+  --surface2: #403b49;
+  --violet: #8155b7;
+  --lavender: #a77be0;
+  --ink: #f1edf5;
+  --muted: #aaa5b2;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--concrete);
+    color: var(--ink);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    /* A restrained industrial grain, so surfaces do not read as flat panels. */
+    background-image:
+      radial-gradient(circle at 18% -10%, rgba(129, 85, 183, 0.18), transparent 55%),
+      radial-gradient(circle at 92% 8%, rgba(167, 123, 224, 0.1), transparent 45%),
+      repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.013) 0px,
+        rgba(255, 255, 255, 0.013) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+
+  /* Numbers must line up in tables and price columns. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--lavender);
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* stops iOS zooming in on focus */
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-white/5 bg-surface shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold
+      transition-colors disabled:cursor-not-allowed disabled:opacity-45;
+    min-height: 44px; /* a comfortable touch target */
+  }
+
+  .btn-primary {
+    @apply btn bg-violet text-ink hover:bg-violet-600 active:bg-violet-700;
+  }
+
+  .btn-secondary {
+    @apply btn border border-white/10 bg-surface2 text-ink hover:border-lavender/40;
+  }
+
+  .btn-ghost {
+    @apply btn text-muted hover:bg-white/5 hover:text-ink;
+  }
+
+  .btn-buy {
+    @apply btn bg-up/15 text-up ring-1 ring-inset ring-up/35 hover:bg-up/25;
+  }
+
+  .btn-sell {
+    @apply btn bg-down/15 text-down ring-1 ring-inset ring-down/35 hover:bg-down/25;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-white/10 bg-concrete/70 px-3 py-2.5 text-ink
+      placeholder:text-muted/60 focus:border-lavender/50 focus:outline-none;
+  }
+
+  .label {
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+}
+
+/* Keep long tables scrollable rather than letting them blow out the page. */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
