@@ -14,6 +14,10 @@ else is required: no queue, no cache, no scheduler, no realtime service.
 | `OWNER_EMAIL` | first run | Creates the owner account on migration |
 | `OWNER_PASSWORD` | first run | That account's password |
 | `ANTHROPIC_API_KEY` | no | Enables the optional admin assistant |
+| `APP_URL` | for OAuth | Your public URL, e.g. `https://your-app.onrender.com` |
+| `GOOGLE_CLIENT_ID` / `_SECRET` | no | "Continue with Google" for administrators |
+| `GITHUB_CLIENT_ID` / `_SECRET` | no | "Continue with GitHub" for administrators |
+| `ADMIN_ALLOWED_EMAILS` | no | Who may become an administrator via a provider |
 | `APP_URL` | no | Used by `seed:demo` when printing links |
 | `PGPOOL_MAX` | no | Connection pool size, default 10 |
 
@@ -164,6 +168,56 @@ owner password for you@example.com reset to match OWNER_PASSWORD
 
 Leaving the variable unchanged does nothing, so this costs nothing on an
 ordinary deployment.
+
+### Letting administrators sign in with Google or GitHub
+
+Optional. With nothing configured the buttons do not appear and password
+sign-in is the only route, exactly as before.
+
+**Google.** In the Google Cloud console: create a project, configure the OAuth
+consent screen (External is fine), then **Credentials → Create credentials →
+OAuth client ID → Web application**. Add this authorised redirect URI:
+
+```
+https://your-app.onrender.com/api/auth/oauth/google/callback
+```
+
+Copy the client ID and secret into `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET`, and set `APP_URL` to your public URL.
+
+**GitHub.** Settings → Developer settings → OAuth Apps → New OAuth App.
+Authorisation callback URL:
+
+```
+https://your-app.onrender.com/api/auth/oauth/github/callback
+```
+
+Copy the client ID and a generated secret into `GITHUB_CLIENT_ID` and
+`GITHUB_CLIENT_SECRET`.
+
+#### Who is allowed in
+
+This is the part to get right on a public deployment.
+
+By default a provider sign-in **only** succeeds when the verified email
+address already belongs to an administrator account. Signing in with Google
+links that identity to the existing account; it never creates a new one. So
+out of the box, nobody gains access who did not already have it.
+
+`ADMIN_ALLOWED_EMAILS` widens that deliberately. Any address listed there may
+create an administrator account simply by signing in:
+
+```
+ADMIN_ALLOWED_EMAILS=you@school.edu,colleague@school.edu
+```
+
+Treat it as a list of people you are handing administrator access to. Leave it
+blank and link your own account instead, by signing in with the provider using
+the same address as `OWNER_EMAIL`.
+
+Two further rules the code enforces: an address the provider has not verified
+is never matched to an account, and an administrator who has only ever signed
+in with a provider has no password, so there is nothing to guess.
 
 ### Backups
 

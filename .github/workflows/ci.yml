@@ -94,5 +94,7 @@ jobs:
             sleep 1
           done
           echo "server did not start in time"; exit 1
+      - name: Server tests that need a database
+        run: npx vitest run src/server
       - name: API smoke test
         run: npm run test:smoke

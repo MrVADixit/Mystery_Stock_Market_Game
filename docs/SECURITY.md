@@ -23,6 +23,30 @@ patched. Verification is constant-time. A sign-in attempt for an address that
 does not exist still spends comparable time, so response timing does not reveal
 whether an account exists.
 
+### Signing in with a provider
+
+Optional, for administrators only; participants are unaffected. The flow is a
+standard OAuth 2.0 authorisation code exchange with PKCE on Google (GitHub's
+OAuth Apps do not support it). The `state` value and the PKCE verifier travel
+in a short-lived `HttpOnly` cookie and the returned state is compared in
+constant time, so a sign-in cannot be forged from another site.
+
+The authorisation decision is deliberately conservative and lives in one
+testable function, `decideSignIn`:
+
+1. An identity already linked to an account signs in to that account.
+2. Otherwise the provider must report a **verified** email address.
+3. That address may sign in to an account that already exists.
+4. Only an address in `ADMIN_ALLOWED_EMAILS` may create a new account.
+
+Without that fourth rule, anybody on the internet with a Google account could
+sign in to the administrator screens of a public deployment, so it is off by
+default. Refusals are recorded in the audit trail.
+
+An administrator who only signs in with a provider has a null `password_hash`,
+and the password path refuses such accounts outright rather than comparing
+against an empty value.
+
 ### Authorisation
 
 `requireGameAdmin` checks that the caller administers *that specific game*; the

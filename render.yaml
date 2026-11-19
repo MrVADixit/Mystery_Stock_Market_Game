@@ -44,3 +44,10 @@ services:
       # See the build command above for why the install must opt back in.
       - key: NODE_ENV
         value: production
+      # OPTIONAL extras, added afterwards in the Environment tab rather than
+      # prompted for here, so a plain deployment asks nothing unnecessary:
+      #   ANTHROPIC_API_KEY      the administrator's AI assistant
+      #   APP_URL                e.g. https://your-app.onrender.com
+      #   GOOGLE_CLIENT_ID/SECRET, GITHUB_CLIENT_ID/SECRET
+      #                          "Continue with Google / GitHub" for admins
+      #   ADMIN_ALLOWED_EMAILS   who may become an admin via a provider

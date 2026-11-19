@@ -48,18 +48,13 @@ function cookieOptions(maxAgeSeconds: number) {
 
 /* ----------------------------- administrators ----------------------------- */
 
-export async function loginAdmin(email: string, password: string): Promise<AdminPrincipal | null> {
-  const user = await queryOne<{ id: string; email: string; role: 'owner' | 'admin'; password_hash: string }>(
-    'SELECT id, email, role, password_hash FROM users WHERE lower(email) = lower($1)',
-    [email],
+/** Issues the administrator cookie for an account that has been authenticated. */
+export async function issueAdminSession(userId: string): Promise<AdminPrincipal | null> {
+  const user = await queryOne<{ id: string; email: string; role: 'owner' | 'admin' }>(
+    'SELECT id, email, role FROM users WHERE id = $1',
+    [userId],
   );
-  if (!user) {
-    // Spend comparable time on a missing account so the response time does
-    // not reveal whether the address exists.
-    await verifyPassword(password, 'scrypt$65536$8$1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-    return null;
-  }
-  if (!(await verifyPassword(password, user.password_hash))) return null;
+  if (!user) return null;
 
   const token = generateToken();
   await query(
@@ -70,6 +65,24 @@ export async function loginAdmin(email: string, password: string): Promise<Admin
   await query('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
   (await cookies()).set(ADMIN_COOKIE, token, cookieOptions(ADMIN_TTL_HOURS * 3600));
   return { kind: 'admin', userId: user.id, email: user.email, role: user.role };
+}
+
+export async function loginAdmin(email: string, password: string): Promise<AdminPrincipal | null> {
+  const user = await queryOne<{ id: string; email: string; role: 'owner' | 'admin'; password_hash: string | null }>(
+    'SELECT id, email, role, password_hash FROM users WHERE lower(email) = lower($1)',
+    [email],
+  );
+  // An administrator who only ever signs in with a provider has no password,
+  // and must not be reachable by guessing one.
+  if (!user || !user.password_hash) {
+    // Spend comparable time on a missing account so the response time does
+    // not reveal whether the address exists.
+    await verifyPassword(password, 'scrypt$65536$8$1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+    return null;
+  }
+  if (!(await verifyPassword(password, user.password_hash))) return null;
+
+  return issueAdminSession(user.id);
 }
 
 export async function currentAdmin(): Promise<AdminPrincipal | null> {
