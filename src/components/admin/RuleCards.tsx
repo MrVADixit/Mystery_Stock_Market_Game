@@ -21,12 +21,10 @@ import type { PreviewResult } from '@/engine/preview';
  * selectors. There is no expression editor and no operator list anywhere.
  */
 export function RuleCards({
-  gameId,
   config,
   editable,
   onChange,
 }: {
-  gameId: string;
   config: SessionConfig;
   editable: boolean;
   onChange: (next: SessionConfig) => void;
@@ -132,12 +130,7 @@ export function RuleCards({
       ) : null}
 
       {previewing ? (
-        <RulePreview
-          gameId={gameId}
-          config={config}
-          stockId={previewing}
-          onClose={() => setPreviewing(null)}
-        />
+        <RulePreview config={config} stockId={previewing} onClose={() => setPreviewing(null)} />
       ) : null}
     </div>
   );
@@ -910,12 +903,10 @@ function rescale(prices: number[], newRounds: number, minPrice: number): number[
 /* ---------------------------------------------------------------- */
 
 function RulePreview({
-  gameId,
   config,
   stockId,
   onClose,
 }: {
-  gameId: string;
   config: SessionConfig;
   stockId: string;
   onClose: () => void;
@@ -939,14 +930,19 @@ function RulePreview({
         stock.rule.template === 'SECRET_DEPENDENT' ? stock.rule.referenceStockId : stockId;
       const comparison =
         stock.rule.template === 'RELATIVE_BUY_VOLUME' ? stock.rule.comparisonStockId : null;
-      const next = await api<PreviewResult>(`/api/admin/games/${gameId}/preview`, {
+      // Posted with the configuration in hand, so an unsaved edit previews
+      // exactly as it would run.
+      const next = await api<PreviewResult>('/api/admin/preview', {
         method: 'POST',
         body: JSON.stringify({
-          holdings: { [stockId]: holdings },
-          previousHoldings: { [stockId]: previousHoldings },
-          grossBuys: { [stockId]: grossBuys, ...(comparison ? { [comparison]: 0 } : {}) },
-          secretActive: { [reference]: secret },
-          forceRisingCount: rising,
+          config,
+          input: {
+            holdings: { [stockId]: holdings },
+            previousHoldings: { [stockId]: previousHoldings },
+            grossBuys: { [stockId]: grossBuys, ...(comparison ? { [comparison]: 0 } : {}) },
+            secretActive: { [reference]: secret },
+            forceRisingCount: rising,
+          },
         }),
       });
       setResult(next);

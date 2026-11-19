@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import clsx from 'clsx';
-import { Card, SectionTitle } from '@/components/ui';
+import { Card, Chip, SectionTitle } from '@/components/ui';
 import { won } from '@/lib/format';
+import { addStock, removeStock, EditError } from '@/engine/edit';
+import { templateOf } from '@/engine/templates';
 import type { SessionConfig } from '@/engine/types';
 
 type Section = 'general' | 'stocks' | 'secrets' | 'intel' | 'disclosure' | 'trading' | 'public';
@@ -235,45 +237,7 @@ export function ConfigEditor({
       ) : null}
 
       {section === 'stocks' ? (
-        <Card>
-          <SectionTitle hint="Rules are edited on the Stocks & rules tab">Stocks and opening prices</SectionTitle>
-          <ul className="space-y-2">
-            {config.stocks.map((stock, i) => (
-              <li key={stock.id} className="grid gap-2 sm:grid-cols-[1fr_12rem]">
-                <label className="block">
-                  <span className="label">Stock {i + 1}</span>
-                  <input
-                    className="field"
-                    value={stock.name}
-                    maxLength={60}
-                    disabled={!editable}
-                    onChange={(e) =>
-                      set((d) => {
-                        d.stocks[i].name = e.target.value;
-                      })
-                    }
-                  />
-                </label>
-                <Num
-                  label="Opening price"
-                  value={stock.initialPrice}
-                  suffix="won"
-                  min={config.minPrice}
-                  disabled={!editable}
-                  onChange={(n) =>
-                    set((d) => {
-                      d.stocks[i].initialPrice = Math.max(0, Math.round(n));
-                    })
-                  }
-                />
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-muted">
-            A stock running the scripted-path mechanic takes its round 1 price from its schedule,
-            whatever is typed here.
-          </p>
-        </Card>
+        <StocksSection config={config} editable={editable} onChange={onChange} set={set} />
       ) : null}
 
       {section === 'secrets' ? (
@@ -643,5 +607,151 @@ export function ConfigEditor({
         </Card>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Companies and opening prices, with the ability to add and remove them.
+ *
+ * Removing a company is never a simple delete: other rules may watch it,
+ * compare against it or count it in a market universe. The engine repairs
+ * all of that and reports what it changed, which is shown here rather than
+ * happening silently.
+ */
+function StocksSection({
+  config,
+  editable,
+  onChange,
+  set,
+}: {
+  config: SessionConfig;
+  editable: boolean;
+  onChange: (next: SessionConfig) => void;
+  set: (mutate: (draft: SessionConfig) => void) => void;
+}) {
+  const [repairs, setRepairs] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  const apply = (action: () => { config: SessionConfig; repairs: string[] }) => {
+    setError(null);
+    try {
+      const result = action();
+      onChange(result.config);
+      setRepairs(result.repairs);
+    } catch (e) {
+      setError(e instanceof EditError ? e.message : 'That edit could not be applied.');
+      setRepairs([]);
+    }
+  };
+
+  return (
+    <Card>
+      <SectionTitle hint="Mechanics are assigned on the Stocks & rules tab">
+        Companies and opening prices
+      </SectionTitle>
+
+      <ul className="space-y-2">
+        {config.stocks.map((stock, i) => (
+          <li key={stock.id} className="grid gap-2 sm:grid-cols-[1fr_11rem_auto]">
+            <label className="block">
+              <span className="label">
+                Company {i + 1}
+                <span className="ml-2 normal-case tracking-normal text-muted/80">
+                  {templateOf(stock.rule).title}
+                </span>
+              </span>
+              <input
+                className="field"
+                value={stock.name}
+                maxLength={60}
+                disabled={!editable}
+                onChange={(e) =>
+                  set((d) => {
+                    d.stocks[i].name = e.target.value;
+                  })
+                }
+              />
+            </label>
+            <Num
+              label="Opening price"
+              value={stock.initialPrice}
+              suffix="won"
+              min={config.minPrice}
+              disabled={!editable}
+              onChange={(n) =>
+                set((d) => {
+                  d.stocks[i].initialPrice = Math.max(0, Math.round(n));
+                })
+              }
+            />
+            <div className="flex items-end pb-1">
+              {confirming === stock.id ? (
+                <span className="flex gap-1">
+                  <button
+                    className="btn-sell px-2 py-1.5 text-[11px]"
+                    onClick={() => {
+                      setConfirming(null);
+                      apply(() => removeStock(config, stock.id));
+                    }}
+                  >
+                    Remove
+                  </button>
+                  <button
+                    className="btn-ghost px-2 py-1.5 text-[11px]"
+                    onClick={() => setConfirming(null)}
+                  >
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <button
+                  className="btn-ghost px-2 py-1.5 text-[11px]"
+                  disabled={!editable || config.stocks.length <= 1}
+                  onClick={() => setConfirming(stock.id)}
+                  aria-label={`Remove ${stock.name}`}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {editable ? (
+        <button
+          className="btn-secondary mt-3"
+          onClick={() => apply(() => addStock(config))}
+          disabled={config.stocks.length >= 40}
+        >
+          Add a company
+        </button>
+      ) : null}
+
+      {error ? <p className="mt-3 rounded-lg bg-down/15 px-3 py-2 text-sm text-down">{error}</p> : null}
+
+      {repairs.length > 0 ? (
+        <div className="mt-3 rounded-lg bg-violet/12 p-3">
+          <div className="mb-1 flex items-center gap-2">
+            <Chip tone="violet">Adjusted</Chip>
+            <span className="text-xs text-muted">Other rules referred to what you changed.</span>
+          </div>
+          <ul className="space-y-0.5">
+            {repairs.map((repair, i) => (
+              <li key={i} className="text-xs text-ink/90">
+                • {repair}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <p className="mt-3 text-xs text-muted">
+        A new company starts on the unchanged-price mechanic; assign it a real one on the Stocks &
+        rules tab. A company running the scripted path takes its round 1 price from its schedule,
+        whatever is typed here.
+      </p>
+    </Card>
   );
 }

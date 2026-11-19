@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import clsx from 'clsx';
 import { ApiError, api, useCountdown, useLiveState } from '@/lib/client';
-import { Card, Chip, SectionTitle, Spinner, Toasts, useToasts } from '@/components/ui';
+import { Card, Chip, SectionTitle, Sheet, Spinner, Toasts, useToasts } from '@/components/ui';
 import { Overview } from '@/components/admin/Overview';
 import { ConfigEditor } from '@/components/admin/ConfigEditor';
 import { RuleCards } from '@/components/admin/RuleCards';
@@ -51,6 +51,7 @@ export default function AdminGamePage() {
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   const { state, error, loading, refresh } = useLiveState<AdminState>(
@@ -223,11 +224,14 @@ export default function AdminGamePage() {
         ) : null}
 
         {tab === 'configuration' ? (
-          <ConfigEditor config={draft} editable={Boolean(editable)} onChange={setDraft} />
+          <div className="space-y-4">
+            <Provenance config={config} onSaveTemplate={() => setSavingTemplate(true)} />
+            <ConfigEditor config={draft} editable={Boolean(editable)} onChange={setDraft} />
+          </div>
         ) : null}
 
         {tab === 'rules' ? (
-          <RuleCards gameId={gameId} config={draft} editable={Boolean(editable)} onChange={setDraft} />
+          <RuleCards config={draft} editable={Boolean(editable)} onChange={setDraft} />
         ) : null}
 
         {tab === 'participants' ? (
@@ -262,8 +266,144 @@ export default function AdminGamePage() {
         {tab === 'results' ? <Results gameId={gameId} /> : null}
       </main>
 
+      {savingTemplate ? (
+        <SaveAsTemplateSheet
+          config={draft}
+          derivedFrom={config.game.templateName ?? undefined}
+          onClose={() => setSavingTemplate(false)}
+          onSaved={() => {
+            setSavingTemplate(false);
+            toasts.success('Saved as a template — it will appear when you create a session');
+          }}
+          onError={toasts.error}
+        />
+      ) : null}
+
       <Toasts toasts={toasts.toasts} onDismiss={toasts.dismiss} />
     </div>
+  );
+}
+
+/** Where this session's rules came from, and how to keep them. */
+function Provenance({
+  config,
+  onSaveTemplate,
+}: {
+  config: ConfigResponse;
+  onSaveTemplate: () => void;
+}) {
+  return (
+    <Card>
+      <SectionTitle hint="Where this game came from">Template</SectionTitle>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium text-ink">{config.game.templateName ?? 'Custom configuration'}</span>
+        {config.game.scrambleSeed ? (
+          <Chip tone="violet">scrambled · seed {config.game.scrambleSeed}</Chip>
+        ) : (
+          <Chip tone="neutral">as published</Chip>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        {config.game.scrambleSeed
+          ? 'The mechanics were re-assigned and the numbers varied for this session, so anyone who has played this template before gets no head start. Reuse the seed to recreate exactly this game for another class.'
+          : 'This session runs the template exactly as published. If any of your participants have played it before, create the next one with scrambling switched on.'}
+      </p>
+      <button className="btn-secondary mt-3" onClick={onSaveTemplate}>
+        Save as template
+      </button>
+    </Card>
+  );
+}
+
+/** Keeps the current configuration as a reusable template. */
+function SaveAsTemplateSheet({
+  config,
+  derivedFrom,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  config: SessionConfig;
+  derivedFrom?: string;
+  onClose: () => void;
+  onSaved: () => void;
+  onError: (message: string) => void;
+}) {
+  const [name, setName] = useState(`${config.name} template`);
+  const [description, setDescription] = useState('');
+  const [designerNote, setDesignerNote] = useState('');
+  const [isShared, setIsShared] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api('/api/admin/templates', {
+        method: 'POST',
+        body: JSON.stringify({ name, description, designerNote, isShared, derivedFrom, config }),
+      });
+      onSaved();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not save the template.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Sheet open onClose={onClose} title="Save as template">
+      <p className="text-sm text-muted">
+        Keeps these companies, mechanics, numbers and settings so you can start another session from
+        them. The saved template is a snapshot: later changes to this session will not affect it.
+      </p>
+
+      <label className="mt-4 block">
+        <span className="label">Template name</span>
+        <input className="field" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+      </label>
+
+      <label className="mt-3 block">
+        <span className="label">Description</span>
+        <input
+          className="field"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={600}
+          placeholder="What this game is like to play"
+        />
+      </label>
+
+      <label className="mt-3 block">
+        <span className="label">Note to yourself</span>
+        <input
+          className="field"
+          value={designerNote}
+          onChange={(e) => setDesignerNote(e.target.value)}
+          maxLength={600}
+          placeholder="What to watch for when you run it"
+        />
+      </label>
+
+      <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-white/8 p-3">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4"
+          checked={isShared}
+          onChange={(e) => setIsShared(e.target.checked)}
+        />
+        <span>
+          <span className="block text-sm font-medium text-ink">
+            Share with other administrators
+          </span>
+          <span className="mt-0.5 block text-xs text-muted">
+            They can start sessions from it but cannot change it.
+          </span>
+        </span>
+      </label>
+
+      <button className="btn-primary mt-5 w-full" onClick={save} disabled={busy || name.trim().length < 2}>
+        {busy ? <Spinner /> : null} Save template
+      </button>
+    </Sheet>
   );
 }
 

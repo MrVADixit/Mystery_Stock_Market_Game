@@ -271,6 +271,10 @@ export interface GameRow {
   round_started_at: Date | null;
   round_ends_at: Date | null;
   warnings_acknowledged: boolean;
+  template_id: string | null;
+  template_source: 'built-in' | 'custom' | 'blank' | null;
+  template_name: string | null;
+  scramble_seed: number | null;
   created_at: Date;
   started_at: Date | null;
   finished_at: Date | null;

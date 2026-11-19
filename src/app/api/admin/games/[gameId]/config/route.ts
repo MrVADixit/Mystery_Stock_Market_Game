@@ -27,6 +27,9 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ ga
         hasDisplayToken: Boolean(game.display_token),
         displayToken: game.display_token,
         warningsAcknowledged: game.warnings_acknowledged,
+        templateId: game.template_id,
+        templateName: game.template_name,
+        scrambleSeed: game.scramble_seed,
       },
     });
   } catch (e) {

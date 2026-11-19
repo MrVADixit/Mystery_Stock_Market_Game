@@ -7,28 +7,64 @@ How to run a session from start to finish, without writing any code.
 ## The short version
 
 1. Sign in at `/admin`.
-2. **New session** → **Quick start** → name it → **Create session**.
+2. **New session** → pick a template → name it → **Create session**.
 3. **Simulation & testing** → **TEST MY GAME**.
 4. **Dashboard** → **Open registration**. Share the join link.
 5. **Dashboard** → **Start the game**.
 6. Watch. Everything runs itself.
 
-The classic preset is already a complete, playable configuration. You do not
-have to change anything.
+Every template is already a complete, playable game. You do not have to change
+anything.
 
 ---
 
-## Creating a session
+## Choosing a game
 
-**Quick start** loads the full CLASSIC MYSTERY STOCK MARKET preset: seven stocks,
-seven rules, 100,000 won starting cash, 24 rounds of five minutes, secrets,
-Pieces, and reveals at rounds 5, 10, 15 and 20.
+**New session** opens the template gallery: twelve ready-made games, your own
+saved templates, and a from-scratch option.
 
-**Customise** starts from the same preset and takes you to the configuration
-wizard.
+Each card shows the theme, how many companies, how many rounds, a description
+and a designer's note about how it plays. Expand *Show which mechanic each
+company runs* to see the answer key — that is for you, not the class.
 
-Either way you can change anything afterwards, right up until the game starts.
-Your edits are held as a draft; a bar appears at the top of the screen until you
+A few worth knowing:
+
+- **Classic Mystery Stock Market** — the original seven. The reference game.
+- **Greenfield** — gentle, smaller movements, nobody is wiped out in round
+  three. The best first game for a class that has not played before.
+- **Neon District** — the most volatile. Short rounds, expect a floor hit.
+- **Monsoon** — the holdings rule is inverted: buying pushes the price *up*.
+- **Tidal Reach** — six companies, twelve rounds, one lesson. One mechanic is
+  missing entirely.
+- **Cascade** — eight companies over thirty rounds, with two competing sweet
+  spots the market cannot satisfy at once.
+
+The full list is in [GAME_TEMPLATES.md](GAME_TEMPLATES.md).
+
+**Build from scratch** creates the number of companies you ask for, all doing
+nothing, for you to assign mechanics to yourself.
+
+### Scrambling — leave it on
+
+The toggle under the gallery is the most important setting on the screen.
+
+With it on, the session re-assigns which company runs which mechanic, repoints
+every cross-reference, varies all the numbers, and about a third of the time
+reverses whether buying pushes a price up or down. A participant who has played
+that template before gets **no head start** — a company keeps its original
+mechanic about as often as pure chance would give.
+
+Turn it off only when you specifically want the published version, for example
+the first time you run Classic and want it to match the documentation.
+
+The **seed** box underneath controls reproducibility. Leave it blank for a fresh
+puzzle every time. Note the seed down (it is shown on the session afterwards) and
+reuse it to recreate exactly the same game for a second class.
+
+### Editing afterwards
+
+Whichever you pick, you can change anything right up until the game starts. Your
+edits are held as a draft; a bar appears at the top of the screen until you
 **Save** or **Discard** them.
 
 ### Picking a length
@@ -52,8 +88,21 @@ Seven numbered sections. Nothing is mandatory.
 optional ceiling and an optional per-round movement cap. The last two are off by
 default so the classic mechanics are untouched.
 
-**Stocks & prices** — rename the stocks and set their opening prices. A stock
-running the scripted path takes its round 1 price from its schedule.
+**Stocks & prices** — rename the companies, set their opening prices, and **add
+or remove companies**. A company running the scripted path takes its round 1
+price from its schedule.
+
+Adding and removing is not a plain insert or delete, because rules refer to each
+other. The system repairs the rest of the configuration and tells you what it
+changed:
+
+> *Airtight Construction followed Defense Steel; it now follows CoyoTech.*
+>
+> *Seasonal Financial now counts 8 companies, so its thresholds were raised to
+> 5 rising / 4 falling to keep the two branches from overlapping.*
+
+A new company starts on the unchanged-price mechanic; give it a real one on the
+**Stocks & rules** tab.
 
 **Secrets** — availability, tokens per participant, duration, the latest round a
 secret may be imposed, exactly what a secret conceals, whether trading continues
@@ -95,6 +144,19 @@ the editor. Stock names and rule templates are completely independent.
 You can change every number, every threshold, every percentage and every stock
 reference. You cannot change the *structure* of a rule — there is no formula
 editor — and that is deliberate: it is what makes the rule library testable.
+
+### Saving your own template
+
+**Configuration → Save as template** keeps the current companies, mechanics,
+numbers and settings for reuse. It is a snapshot — later changes to this session
+will not affect it.
+
+Saved templates appear in the gallery next to the built-ins. Manage them at
+**Templates** in the header: edit one in place with the same rule cards, rename
+it, share it with other administrators (they can start sessions from it but not
+change it), or delete it.
+
+A template that would not run cannot be saved — it is validated first.
 
 ### Risk warnings
 
@@ -258,6 +320,14 @@ a model.
 
 **The game will not start.** The readiness check found blocking errors. Open
 **TEST MY GAME** and follow the links to the cards that need fixing.
+
+**My class has played this before.** Create the session with scrambling on, or
+pick a different template — no two templates share a company name or an
+arrangement of mechanics.
+
+**I want both classes to play the identical game.** Note the seed shown on the
+first session (Configuration → Template) and type it into the seed box when you
+create the second.
 
 **A participant cannot join.** Registration is either not open yet or has closed
 because the game started. Check the status chip in the header.

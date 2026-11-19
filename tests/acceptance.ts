@@ -80,16 +80,33 @@ async function main() {
   check('1. the administrator signs in', true);
 
   await admin.getByRole('button', { name: 'New session' }).click();
+  await admin.getByRole('button', { name: 'Choose Classic Mystery Stock Market' }).waitFor({ timeout: 20_000 });
+
+  // The template gallery.
+  const templateCards = admin.getByRole('button', { name: /^Choose / });
+  const templateCount = await templateCards.count();
+  check('2a. a library of ready-made games is offered', templateCount >= 10, `${templateCount} templates`);
+  const pickerText = await admin.locator('[role="dialog"]').innerText();
+  check(
+    '2b. the scramble option is offered and explained',
+    hasText(pickerText, 'Scramble the rules for this session') &&
+      hasText(pickerText, 'gets no head start'),
+  );
+  check('2c. a from-scratch option is offered', hasText(pickerText, 'Build from scratch'));
+  await shot(admin, '00-template-picker');
+
+  await admin.getByRole('button', { name: 'Choose Classic Mystery Stock Market' }).click();
   await admin.getByLabel('Game name').fill('Acceptance Demonstration');
-  await admin.getByRole('button', { name: /Quick start/ }).click();
   await admin.getByLabel('Rounds').fill(String(ROUNDS));
   await admin.getByLabel('Minutes per round').fill(String(ROUND_SECONDS / 60));
+  // Unscrambled, so this run matches the documented classic configuration.
+  await admin.getByLabel(/Scramble the rules/).uncheck();
   await admin.getByRole('button', { name: 'Create session' }).click();
   await admin.waitForURL(/\/admin\/[0-9a-f-]{36}/, { timeout: 20_000 });
   const gameId = admin.url().split('/admin/')[1];
-  check('2. selects the classic preset and creates a session', Boolean(gameId));
+  check('2. selects the classic template and creates a session', Boolean(gameId));
 
-  await admin.getByRole('button', { name: 'Stocks & rules' }).click();
+  await admin.getByRole('button', { name: 'Stocks & rules', exact: true }).click();
   const ruleCards = admin.locator('[id^="rule-"]');
   await ruleCards.first().waitFor({ timeout: 15_000 });
   const ruleCount = await ruleCards.count();
@@ -131,7 +148,7 @@ async function main() {
   check('5. changes a reference stock through a dropdown', true);
 
   // 6-7. secret and intelligence configuration.
-  await admin.getByRole('button', { name: 'Configuration' }).click();
+  await admin.getByRole('button', { name: 'Configuration', exact: true }).click();
   await admin.getByRole('button', { name: /Secrets/ }).click();
   const secretsText = await admin.locator('main').innerText();
   check('6. configures secret availability', hasText(secretsText, 'Secrets are available'));
@@ -150,12 +167,12 @@ async function main() {
   await shot(admin, '02-configuration');
 
   // Save the edits.
-  await admin.getByRole('button', { name: 'Save' }).click();
+  await admin.getByRole('button', { name: 'Save', exact: true }).click();
   await admin.getByText('Configuration saved').waitFor({ timeout: 15_000 });
   check('4b. the edited configuration saves', true);
 
   // 9-11. TEST MY GAME.
-  await admin.getByRole('button', { name: 'Simulation & testing' }).click();
+  await admin.getByRole('button', { name: 'Simulation & testing', exact: true }).click();
   await admin.getByRole('button', { name: 'TEST MY GAME' }).click();
   const verdict = admin.locator('text=/READY|NEEDS CORRECTION/').first();
   await verdict.waitFor({ timeout: 60_000 });
@@ -170,18 +187,61 @@ async function main() {
   );
   await shot(admin, '03-readiness');
 
+  // --- companies can be added and removed, with the rest repaired -----
+  await admin.getByRole('button', { name: 'Configuration', exact: true }).click();
+  await admin.getByRole('button', { name: /Stocks & prices/ }).click();
+  await admin.getByRole('button', { name: 'Add a company' }).click();
+  await admin.getByText(/Adjusted/).waitFor({ timeout: 10_000 });
+  const afterAdd = await admin.locator('main').innerText();
+  check(
+    '8b. a company can be added and the affected rules are repaired',
+    hasText(afterAdd, 'Company 8') && hasText(afterAdd, 'thresholds were raised'),
+    afterAdd.slice(0, 200),
+  );
+
+  const companiesBefore = await admin.getByRole('button', { name: /^Remove / }).count();
+  await admin.getByRole('button', { name: 'Remove Company 8' }).click();
+  await admin.getByRole('button', { name: 'Remove', exact: true }).click();
+  await admin.getByRole('button', { name: 'Remove Company 8' }).waitFor({ state: 'detached', timeout: 10_000 });
+  const companiesAfter = await admin.getByRole('button', { name: /^Remove / }).count();
+  check(
+    '8c. a company can be removed again',
+    companiesAfter === companiesBefore - 1,
+    `${companiesBefore} → ${companiesAfter}`,
+  );
+  const removalNotes = await admin.locator('main').innerText();
+  check(
+    '8e. removing a company reports what it repaired',
+    hasText(removalNotes, 'Adjusted') && hasText(removalNotes, 'no longer counts'),
+  );
+
+  // --- the configuration can be kept as a template --------------------
+  await admin.getByRole('button', { name: 'Save as template' }).click();
+  await admin.getByRole('heading', { name: 'Save as template' }).waitFor({ timeout: 10_000 });
+  const templateName = `Acceptance template ${Date.now()}`;
+  await admin.getByLabel('Template name').fill(templateName);
+  await admin.getByLabel('Description').fill('Saved by the acceptance test.');
+  await admin.getByRole('button', { name: 'Save template' }).click();
+  await admin.getByText(/Saved as a template/).waitFor({ timeout: 20_000 });
+  check('8d. the configuration can be saved as a reusable template', true);
+
+  await admin
+    .getByRole('button', { name: 'Save', exact: true })
+    .click({ timeout: 5000 })
+    .catch(() => {});
+
   // 12. open registration.
-  await admin.getByRole('button', { name: 'Dashboard' }).click();
+  await admin.getByRole('button', { name: 'Dashboard', exact: true }).click();
   await admin.getByRole('button', { name: 'Open registration' }).click();
   await admin.getByRole('button', { name: 'Start the game' }).waitFor({ timeout: 15_000 });
   check('12. opens registration', true);
 
-  await admin.getByRole('button', { name: 'Participants' }).click();
+  await admin.getByRole('button', { name: 'Participants', exact: true }).click();
   const joinCode = (await admin.locator('.tabular.text-center.text-3xl').innerText()).trim();
   check('12b. a join code is shown for the common URL', /^[A-Z0-9]{4,10}$/.test(joinCode), joinCode);
 
   // The display link, used later without any login.
-  await admin.getByRole('button', { name: 'Dashboard' }).click();
+  await admin.getByRole('button', { name: 'Dashboard', exact: true }).click();
   const generate = admin.getByRole('button', { name: 'Generate a display link' });
   if (await generate.isVisible().catch(() => false)) await generate.click();
   const displayCode = admin.locator('code').filter({ hasText: '/display/' });
@@ -321,7 +381,7 @@ async function main() {
   await ada.getByText(/ROUND 0[2-9]/).waitFor({ timeout: ROUND_SECONDS * 3000 });
   check('23. prices are recalculated after the round closes', true);
 
-  await admin.getByRole('button', { name: 'Market activity' }).click();
+  await admin.getByRole('button', { name: 'Market activity', exact: true }).click();
   await admin.getByRole('heading', { name: 'Round settlement' }).waitFor({ timeout: 15_000 });
   // Wait for the settlement itself to load, not just the section heading.
   await admin.getByText(/calculations/i).waitFor({ timeout: 20_000 });
@@ -403,7 +463,7 @@ async function main() {
 
   /* ---------------- 28: the trading audit ---------------- */
   console.log('\nTrade audit');
-  await admin.getByRole('button', { name: 'Participants' }).click();
+  await admin.getByRole('button', { name: 'Participants', exact: true }).click();
   await admin
     .locator('tr')
     .filter({ hasText: 'Ada' })
@@ -491,7 +551,7 @@ async function main() {
 
   /* ---------------- 32: export ---------------- */
   console.log('\nExport');
-  await admin.getByRole('button', { name: 'Final results' }).click();
+  await admin.getByRole('button', { name: 'Final results', exact: true }).click();
   await admin.getByRole('heading', { name: 'Export' }).waitFor({ timeout: 15_000 });
   const download = admin.waitForEvent('download', { timeout: 30_000 });
   await admin.getByRole('link', { name: 'Overall ranking' }).click();

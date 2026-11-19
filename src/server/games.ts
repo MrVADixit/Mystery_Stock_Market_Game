@@ -8,7 +8,9 @@ import { generateJoinCode, generateToken } from './ids';
 import { loadConfig, saveConfig, getGame } from './config-store';
 import type { GameRow } from './config-store';
 import { recordAuditIn } from './audit';
-import { classicPreset } from '@/engine/preset';
+import { configForTemplate } from './game-templates';
+import type { TemplateSource } from './game-templates';
+import { scrambleConfig, randomSeed } from '@/engine/scramble';
 import { initialPrices } from '@/engine/settle';
 import { hasBlockingErrors, validateConfig } from '@/engine/validate';
 import { runReadinessCheck } from '@/engine/readiness';
@@ -23,16 +25,36 @@ export class GameStateError extends Error {
   }
 }
 
-/** Creates a draft game. `preset` decides the starting configuration. */
+export interface CreateGameOptions {
+  name: string;
+  /** Which template to start from. */
+  template: { source: TemplateSource; id?: string; stocks?: number };
+  rounds?: number;
+  roundSeconds?: number;
+  /**
+   * Re-assign the mechanics and vary the numbers, so that a participant who
+   * has played this template before gets no advantage. On by default.
+   */
+  scramble?: boolean;
+  /** A specific seed, for reproducing a session exactly. */
+  seed?: number;
+}
+
+/** Creates a draft game from a built-in template, a saved one, or nothing. */
 export async function createGame(
   adminUserId: string,
-  options: { name: string; preset: 'classic' | 'custom'; rounds?: number; roundSeconds?: number },
-): Promise<{ gameId: string; joinCode: string }> {
-  const config = classicPreset({
+  options: CreateGameOptions,
+): Promise<{ gameId: string; joinCode: string; scrambleSeed: number | null; templateName: string }> {
+  const { config: base, templateName } = await configForTemplate(adminUserId, options.template, {
     name: options.name,
     rounds: options.rounds,
     roundSeconds: options.roundSeconds,
   });
+
+  // A blank game has nothing to scramble.
+  const shouldScramble = (options.scramble ?? true) && options.template.source !== 'blank';
+  const scrambleSeed = shouldScramble ? (options.seed ?? randomSeed()) : null;
+  const config = scrambleSeed != null ? scrambleConfig(base, { seed: scrambleSeed }) : base;
 
   return withTransaction(async (client) => {
     // Retry on the astronomically unlikely join-code collision.
@@ -44,9 +66,19 @@ export async function createGame(
     }
 
     const rows = await client.query<{ id: string }>(
-      `INSERT INTO games (name, admin_user_id, status, join_code, display_token)
-         VALUES ($1, $2, 'draft', $3, $4) RETURNING id`,
-      [config.name, adminUserId, joinCode, generateToken()],
+      `INSERT INTO games (name, admin_user_id, status, join_code, display_token,
+                          template_id, template_source, template_name, scramble_seed)
+         VALUES ($1, $2, 'draft', $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [
+        config.name,
+        adminUserId,
+        joinCode,
+        generateToken(),
+        options.template.id ?? null,
+        options.template.source,
+        templateName,
+        scrambleSeed,
+      ],
     );
     const gameId = rows.rows[0].id;
     await saveConfig(client, gameId, config);
@@ -55,9 +87,15 @@ export async function createGame(
       userId: adminUserId,
       actorType: 'admin',
       eventType: 'game.created',
-      payload: { preset: options.preset, name: config.name },
+      payload: {
+        template: options.template,
+        templateName,
+        scrambleSeed,
+        name: config.name,
+        stocks: config.stocks.length,
+      },
     });
-    return { gameId, joinCode };
+    return { gameId, joinCode, scrambleSeed, templateName };
   });
 }
 
@@ -311,8 +349,11 @@ export async function listGamesFor(adminUserId: string, isOwner: boolean) {
     created_at: Date;
     participant_count: number;
     rounds: number;
+    template_name: string | null;
+    scramble_seed: number | null;
   }>(
     `SELECT g.id, g.name, g.status, g.current_round, g.join_code, g.created_at,
+            g.template_name, g.scramble_seed,
             COALESCE(c.rounds, 0) AS rounds,
             (SELECT count(*) FROM participants p WHERE p.game_id = g.id)::int AS participant_count
        FROM games g

@@ -56,6 +56,7 @@ preview runs the *same* code that will price the live game.
 | `auth.ts` | Administrator and participant sessions, display tokens |
 | `password.ts` | scrypt hashing |
 | `config-store.ts` | SessionConfig ⇄ database rows |
+| `game-templates.ts` | The built-in library and saved templates |
 | `games.ts` | Session lifecycle |
 | `rounds.ts` | The authoritative clock and settlement |
 | `trading.ts` | Atomic, idempotent orders |
@@ -111,6 +112,8 @@ is genuinely template-specific:
 - `users`, `auth_sessions` — identity
 - `rule_templates` — the closed library, seeded by migration
 - `games`, `game_configs`, `stocks`, `stock_rules` — one session's setup
+- `game_templates` — templates an administrator saved (the built-in ones live
+  in code, so they are versioned with the application)
 - `participants`, `holdings` — who is playing and what they hold
 - `rounds`, `stock_prices`, `market_snapshots`, `rule_evaluations`,
   `round_stock_activity`, `participant_round_values` — what happened each round

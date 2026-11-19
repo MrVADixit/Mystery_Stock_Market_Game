@@ -16,11 +16,13 @@ async function main() {
   );
   if (!owner) throw new Error('No owner account. Run npm run db:migrate first.');
 
-  const { gameId, joinCode } = await createGame(owner.id, {
+  const { gameId, joinCode, scrambleSeed } = await createGame(owner.id, {
     name: 'Demonstration — Classic Mystery Stock Market',
-    preset: 'classic',
+    template: { source: 'built-in', id: 'classic' },
     rounds: 24,
     roundSeconds: 300,
+    // Left unscrambled so the demonstration matches the documentation.
+    scramble: false,
   });
   await openRegistration(gameId, owner.id);
   const token = await regenerateDisplayToken(gameId);
@@ -30,7 +32,8 @@ async function main() {
   console.log(`  Administrator : ${base}/admin  (sign in as ${owner.email})`);
   console.log(`  Join link     : ${base}/join?code=${joinCode}`);
   console.log(`  Join code     : ${joinCode}`);
-  console.log(`  Display board : ${base}/display/${gameId}?token=${token}\n`);
+  console.log(`  Display board : ${base}/display/${gameId}?token=${token}`);
+  console.log(`  Scramble seed : ${scrambleSeed ?? 'not scrambled'}\n`);
 
   await closePool();
 }

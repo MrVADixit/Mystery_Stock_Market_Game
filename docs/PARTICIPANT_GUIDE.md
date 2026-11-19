@@ -113,6 +113,11 @@ fast as it went down.
 another stock, and at least one is driven by how the market as a whole moved. The
 connections are where the money is.
 
+**Played before? Start from scratch anyway.** The companies, and which company
+follows which rule, are shuffled for almost every session. One rule in
+particular is sometimes reversed — in some games buying a stock pushes its price
+*down*, in others it pushes it *up*. Test it before you bet on it.
+
 **One stock ignores you completely.** Exactly one of the seven follows a path
 decided before the game started. No amount of buying, selling or secrecy touches
 it. Working out which one saves you a lot of wasted effort.

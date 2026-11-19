@@ -25,7 +25,7 @@ npm run test:acceptance  # the §23 demonstration in real browsers
 npm run test:all         # all three in order
 ```
 
-Current state: **171 engine tests**, **83 API checks**, **63 browser checks**.
+Current state: **218 engine tests**, **105 API checks**, **70 browser checks**.
 
 ---
 
@@ -130,6 +130,25 @@ invariants rather than enumerating values:
 
 ---
 
+## Layer 4 — the template library
+
+`src/engine/game-templates.test.ts` (47 tests) covers the twelve built-in games,
+the scrambler and structural edits. The headline assertion is statistical rather
+than structural: over 500 seeds, a company keeps the mechanic it had before
+scrambling no more often than pure chance would give, so a returning player
+learns nothing transferable from having played before.
+
+It also asserts that every built-in template is `READY` with no warnings, that no
+company name is reused across the library, that no two templates arrange the
+mechanics the same way, that scrambling never produces an error or a warning for
+any seed, that a scrambled game never has a dangling or self-referencing rule,
+and that arbitrary sequences of additions and removals leave the configuration
+playable at every step.
+
+The full list is in [GAME_TEMPLATES.md](GAME_TEMPLATES.md) under *Guarantees*.
+
+---
+
 ## TEST MY GAME
 
 The administrator's readiness check (`src/engine/readiness.ts`) runs three
@@ -174,6 +193,10 @@ check, registration, four participants, trading, idempotency, overspending,
 overselling, concurrent orders, MAX BUY, secrets, intelligence, redaction,
 display-token enforcement, settlement transparency, running to the end, final
 results, the audit trail and every export.
+
+It also creates a real session from **every** built-in template with scrambling
+on and confirms each one passes its own readiness check, and covers saving,
+reusing, editing and deleting a custom template.
 
 It asserts things the engine tests cannot: that a retried request does not trade
 twice, that concurrent orders from one participant cannot overspend, that a

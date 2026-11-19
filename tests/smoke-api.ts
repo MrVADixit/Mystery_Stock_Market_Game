@@ -60,16 +60,161 @@ async function main() {
   });
   check('signs in', login.status === 200, login.body);
 
+  /* ---------------- game templates ---------------- */
+  console.log('\nGame templates');
+  const templates = await admin.call<{
+    builtIn: { id: string; name: string; stockNames: string[]; stockCount: number; mechanics: { stockName: string; template: string }[] }[];
+    custom: { id: string; name: string }[];
+  }>('/api/admin/templates');
+  check('the template library loads', templates.status === 200, templates.body);
+  check(
+    `at least ten ready-made games are offered (${templates.body.builtIn.length})`,
+    templates.body.builtIn.length >= 10,
+  );
+
+  const allNames = templates.body.builtIn.flatMap((t) => t.stockNames.map((n) => n.toLowerCase()));
+  check(
+    'no company name is reused between templates',
+    new Set(allNames).size === allNames.length,
+    `${allNames.length} names, ${new Set(allNames).size} distinct`,
+  );
+  const arrangements = new Set(
+    templates.body.builtIn.map((t) => t.mechanics.map((m) => m.template).join('|')),
+  );
+  check(
+    'every template arranges the mechanics differently',
+    arrangements.size === templates.body.builtIn.length,
+  );
+  check(
+    'templates vary in size',
+    new Set(templates.body.builtIn.map((t) => t.stockCount)).size >= 3,
+  );
+
+  // Scrambling: the same seed reproduces a session exactly, a different one
+  // does not, and a returning player's memory of the published template is
+  // worth nothing.
+  const assignmentOf = async (gameId: string) => {
+    const cfg = await admin.call<{ config: { stocks: { name: string; rule: { template: string } }[] } }>(
+      `/api/admin/games/${gameId}/config`,
+    );
+    return cfg.body.config.stocks
+      .map((s) => `${s.name}:${s.rule.template}`)
+      .sort()
+      .join(',');
+  };
+
+  const scrambleA = await admin.call<{ gameId: string; scrambleSeed: number }>('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Scramble A',
+      template: { source: 'built-in', id: 'classic' },
+      rounds: 6,
+      roundSeconds: 8,
+      scramble: true,
+      seed: 123456,
+    }),
+  });
+  const scrambleB = await admin.call<{ gameId: string }>('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Scramble B',
+      template: { source: 'built-in', id: 'classic' },
+      rounds: 6,
+      roundSeconds: 8,
+      scramble: true,
+      seed: 123456,
+    }),
+  });
+  const scrambleC = await admin.call<{ gameId: string }>('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Scramble C',
+      template: { source: 'built-in', id: 'classic' },
+      rounds: 6,
+      roundSeconds: 8,
+      scramble: true,
+      seed: 654321,
+    }),
+  });
+  const plain = await admin.call<{ gameId: string }>('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Unscrambled',
+      template: { source: 'built-in', id: 'classic' },
+      rounds: 6,
+      roundSeconds: 8,
+      scramble: false,
+    }),
+  });
+
+  check('a session records the seed it was scrambled with', scrambleA.body.scrambleSeed === 123456);
+  const [a, b, c, p] = await Promise.all([
+    assignmentOf(scrambleA.body.gameId),
+    assignmentOf(scrambleB.body.gameId),
+    assignmentOf(scrambleC.body.gameId),
+    assignmentOf(plain.body.gameId),
+  ]);
+  check('the same seed reproduces the same game exactly', a === b);
+  check('a different seed produces a different game', a !== c);
+  check('a scrambled game differs from the published template', a !== p, a.slice(0, 120));
+
+  const scrambledReadiness = await admin.call<{ verdict: string; testsFailed: number }>(
+    `/api/admin/games/${scrambleA.body.gameId}/readiness`,
+    { method: 'POST' },
+  );
+  check(
+    `a scrambled game is still READY (${scrambledReadiness.body.verdict})`,
+    scrambledReadiness.body.verdict === 'READY' && scrambledReadiness.body.testsFailed === 0,
+  );
+
+  // Every built-in template must produce a game that passes its own checks.
+  let templatesReady = 0;
+  for (const template of templates.body.builtIn) {
+    const made = await admin.call<{ gameId: string }>('/api/admin/games', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: `Check ${template.name}`,
+        template: { source: 'built-in', id: template.id },
+        scramble: true,
+      }),
+    });
+    const report = await admin.call<{ verdict: string; testsFailed: number }>(
+      `/api/admin/games/${made.body.gameId}/readiness`,
+      { method: 'POST' },
+    );
+    if (report.body.verdict === 'READY' && report.body.testsFailed === 0) templatesReady++;
+    else console.log(`    ${template.id}: ${report.body.verdict}`);
+  }
+  check(
+    `every built-in template starts a READY game when scrambled (${templatesReady}/${templates.body.builtIn.length})`,
+    templatesReady === templates.body.builtIn.length,
+  );
+
+  // A game built from nothing.
+  const blank = await admin.call<{ gameId: string }>('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({ name: 'Blank', template: { source: 'blank', stocks: 4 }, rounds: 6, roundSeconds: 8 }),
+  });
+  const blankConfig = await admin.call<{ config: { stocks: unknown[] }; issues: { level: string }[] }>(
+    `/api/admin/games/${blank.body.gameId}/config`,
+  );
+  check('a game can be built from scratch', blank.status === 201 && blankConfig.body.config.stocks.length === 4);
+  check('a from-scratch game has no blocking problems', blankConfig.body.issues.every((i) => i.level !== 'error'));
+
+  /* ---------------- the session under test ---------------- */
   const created = await admin.call<{ gameId: string; joinCode: string }>('/api/admin/games', {
     method: 'POST',
     body: JSON.stringify({
       name: 'Smoke Test Session',
-      preset: 'classic',
+      template: { source: 'built-in', id: 'classic' },
       rounds: 6,
       roundSeconds: 8,
+      // Unscrambled, so the rest of this test can rely on the documented
+      // classic assignment of mechanics to companies.
+      scramble: false,
     }),
   });
-  check('creates a session from the classic preset', created.status === 201, created.body);
+  check('creates a session from the classic template', created.status === 201, created.body);
   const gameId = created.body.gameId;
   const joinCode = created.body.joinCode;
 
@@ -433,6 +578,70 @@ async function main() {
   }
   const exportRanking = await admin.call<string>(`/api/admin/games/${gameId}/export?kind=ranking`);
   check('the ranking export returns CSV', typeof exportRanking.body === 'string' && (exportRanking.body as string).includes('rank,participant'));
+
+  /* ---------------- saving a template ---------------- */
+  console.log('\nSaving a custom template');
+  const sourceConfig = await admin.call<{ config: Record<string, unknown> }>(
+    `/api/admin/games/${gameId}/config`,
+  );
+  const templateName = `Smoke template ${Date.now()}`;
+  const savedTemplate = await admin.call<{ id: string }>('/api/admin/templates', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: templateName,
+      description: 'Saved by the smoke test.',
+      config: sourceConfig.body.config,
+    }),
+  });
+  check('a configuration can be saved as a template', savedTemplate.status === 201, savedTemplate.body);
+
+  const duplicateName = await admin.call('/api/admin/templates', {
+    method: 'POST',
+    body: JSON.stringify({ name: templateName, config: sourceConfig.body.config }),
+  });
+  check('two templates cannot share a name', duplicateName.status === 409, duplicateName.body);
+
+  const listAfterSave = await admin.call<{ custom: { id: string; name: string }[] }>('/api/admin/templates');
+  check(
+    'the saved template appears in the library',
+    listAfterSave.body.custom.some((t) => t.id === savedTemplate.body.id && t.name === templateName),
+  );
+
+  const fromSaved = await admin.call<{ gameId: string }>('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'From a saved template',
+      template: { source: 'custom', id: savedTemplate.body.id },
+      scramble: false,
+    }),
+  });
+  check('a session can be started from a saved template', fromSaved.status === 201, fromSaved.body);
+
+  const savedReadiness = await admin.call<{ verdict: string }>(
+    `/api/admin/games/${fromSaved.body.gameId}/readiness`,
+    { method: 'POST' },
+  );
+  check(`that session is READY (${savedReadiness.body.verdict})`, savedReadiness.body.verdict === 'READY');
+
+  const renamed = await admin.call(`/api/admin/templates/${savedTemplate.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ description: 'Edited by the smoke test.' }),
+  });
+  check('a saved template can be edited', renamed.status === 200, renamed.body);
+
+  const strangerTemplate = await new Session().call(`/api/admin/templates/${savedTemplate.body.id}`, {
+    method: 'DELETE',
+  });
+  check('a template cannot be deleted by an anonymous caller', strangerTemplate.status === 401);
+
+  const deleted = await admin.call(`/api/admin/templates/${savedTemplate.body.id}`, { method: 'DELETE' });
+  check('a saved template can be deleted', deleted.status === 200, deleted.body);
+
+  const badTemplate = await admin.call('/api/admin/games', {
+    method: 'POST',
+    body: JSON.stringify({ name: 'Nope', template: { source: 'built-in', id: 'not-a-template' } }),
+  });
+  check('an unknown template id is refused', badTemplate.status === 404, badTemplate.body);
 
   console.log(`\n${passed} passed, ${failed} failed\n`);
   process.exit(failed === 0 ? 0 : 1);

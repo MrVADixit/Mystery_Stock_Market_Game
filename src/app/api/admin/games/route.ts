@@ -18,9 +18,18 @@ export async function GET() {
 
 const schema = z.object({
   name: z.string().min(1).max(120),
-  preset: z.enum(['classic', 'custom']).default('classic'),
+  template: z.object({
+    source: z.enum(['built-in', 'custom', 'blank']),
+    id: z.string().min(1).max(64).optional(),
+    /** Only for a blank game: how many companies to start with. */
+    stocks: z.number().int().min(1).max(40).optional(),
+  }),
   rounds: z.number().int().min(1).max(200).optional(),
   roundSeconds: z.number().int().min(5).max(7200).optional(),
+  /** Defaults to true: a returning player should get no head start. */
+  scramble: z.boolean().optional(),
+  /** A specific seed, to reproduce a session exactly. */
+  seed: z.number().int().min(1).max(2_147_483_647).optional(),
 });
 
 export async function POST(request: NextRequest) {

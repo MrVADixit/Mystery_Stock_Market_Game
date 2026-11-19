@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ApiError, api } from '@/lib/client';
-import { Card, Chip, Sheet, Spinner } from '@/components/ui';
+import { Card, Chip, Spinner } from '@/components/ui';
+import { NewSessionSheet } from '@/components/admin/TemplatePicker';
 
 interface GameSummary {
   id: string;
@@ -15,6 +16,8 @@ interface GameSummary {
   join_code: string;
   participant_count: number;
   created_at: string;
+  template_name: string | null;
+  scramble_seed: number | null;
 }
 
 const STATUS_TONES: Record<string, 'neutral' | 'up' | 'violet' | 'warn'> = {
@@ -132,6 +135,9 @@ export default function AdminHome() {
           <h1 className="mt-1 text-2xl font-bold text-ink">Your game sessions</h1>
         </div>
         <div className="flex gap-2">
+          <Link href="/admin/templates" className="btn-secondary">
+            Templates
+          </Link>
           <button className="btn-primary" onClick={() => setCreating(true)}>
             New session
           </button>
@@ -173,6 +179,16 @@ export default function AdminHome() {
                     {game.participant_count} participant{game.participant_count === 1 ? '' : 's'} ·
                     round {game.current_round}/{game.rounds}
                   </div>
+                  {game.template_name ? (
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                      <span>{game.template_name}</span>
+                      {game.scramble_seed ? (
+                        <Chip tone="violet">scrambled · seed {game.scramble_seed}</Chip>
+                      ) : (
+                        <Chip tone="neutral">as published</Chip>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
                 <span className="text-muted" aria-hidden>
                   ›
@@ -183,124 +199,7 @@ export default function AdminHome() {
         </ul>
       )}
 
-      <CreateSessionSheet open={creating} onClose={() => setCreating(false)} />
+      <NewSessionSheet open={creating} onClose={() => setCreating(false)} />
     </main>
-  );
-}
-
-function CreateSessionSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const router = useRouter();
-  const [name, setName] = useState('');
-  const [mode, setMode] = useState<'classic' | 'custom'>('classic');
-  const [rounds, setRounds] = useState(24);
-  const [minutes, setMinutes] = useState(5);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function create() {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await api<{ gameId: string }>('/api/admin/games', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: name.trim() || 'Mystery Stock Market',
-          preset: mode,
-          rounds,
-          roundSeconds: Math.round(minutes * 60),
-        }),
-      });
-      router.push(`/admin/${result.gameId}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create the session.');
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Sheet open={open} onClose={onClose} title="New session">
-      <div>
-        <label className="label" htmlFor="gname">
-          Game name
-        </label>
-        <input
-          id="gname"
-          className="field"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Period 4 — Economics"
-          maxLength={120}
-        />
-      </div>
-
-      <fieldset className="mt-4">
-        <legend className="label">Starting point</legend>
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setMode('classic')}
-            className={`w-full rounded-lg border p-3 text-left ${
-              mode === 'classic' ? 'border-lavender bg-violet/15' : 'border-white/10'
-            }`}
-          >
-            <div className="text-sm font-semibold text-ink">Quick start — Classic Mystery Stock Market</div>
-            <p className="mt-0.5 text-xs text-muted">
-              Seven stocks, seven rules, 100,000 won starting cash, 24 rounds, secrets, Pieces and
-              reveals at rounds 5, 10, 15 and 20. Change anything you like afterwards.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('custom')}
-            className={`w-full rounded-lg border p-3 text-left ${
-              mode === 'custom' ? 'border-lavender bg-violet/15' : 'border-white/10'
-            }`}
-          >
-            <div className="text-sm font-semibold text-ink">Customise</div>
-            <p className="mt-0.5 text-xs text-muted">
-              Start from the same preset and go straight to the configuration wizard.
-            </p>
-          </button>
-        </div>
-      </fieldset>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <label className="label" htmlFor="rounds">
-            Rounds
-          </label>
-          <input
-            id="rounds"
-            type="number"
-            min={1}
-            max={200}
-            className="field tabular"
-            value={rounds}
-            onChange={(e) => setRounds(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="minutes">
-            Minutes per round
-          </label>
-          <input
-            id="minutes"
-            type="number"
-            min={0.5}
-            max={60}
-            step={0.5}
-            className="field tabular"
-            value={minutes}
-            onChange={(e) => setMinutes(Math.max(0.5, Math.min(60, Number(e.target.value) || 1)))}
-          />
-        </div>
-      </div>
-
-      {error ? <p className="mt-3 rounded-lg bg-down/15 px-3 py-2 text-sm text-down">{error}</p> : null}
-
-      <button className="btn-primary mt-5 w-full" onClick={create} disabled={busy}>
-        {busy ? <Spinner /> : null} Create session
-      </button>
-    </Sheet>
   );
 }

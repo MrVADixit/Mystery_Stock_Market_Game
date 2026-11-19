@@ -15,6 +15,18 @@ The winner is whoever ends with the highest total assets.
 
 ---
 
+## Twelve different games
+
+The administrator picks which game you play from a library of twelve, each with
+its own companies, its own arrangement of mechanics and its own numbers — and
+usually scrambles it on top, which re-assigns everything again. So if you have
+played before, what you remember about which company did what is not worth
+anything. The *kinds* of mechanic are the same; which company runs which is not,
+and one of them may even be reversed.
+
+The table below is the classic configuration, which the rest of this handbook
+uses as its example.
+
 ## The classic configuration
 
 | Setting | Default |
@@ -88,7 +100,10 @@ Each stock has one mechanic. The seven in the classic preset are:
 7. **Scripted.** It follows a path decided before the game began. Nothing anyone
    does affects it at all.
 
-Which stock has which mechanic is for you to work out. The full formulas are in
+Which stock has which mechanic is for you to work out — and in most sessions it
+has been shuffled, so asking somebody who played last term will not help. One
+warning worth taking seriously: the holdings rule is sometimes **reversed**, so
+that buying pushes the price up rather than down. Check before you commit. The full formulas are in
 [SEVEN_RULE_TEMPLATES.md](SEVEN_RULE_TEMPLATES.md) — read that only if you are
 running the game, not playing it.
 

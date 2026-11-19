@@ -10,6 +10,7 @@ import { TradeError } from './trading';
 import { SecretError } from './secrets-service';
 import { IntelError } from './intel';
 import { RegistrationError } from './participants';
+import { TemplateError } from './game-templates';
 import { consume } from './ratelimit';
 import { hashIp } from './ids';
 import { authSecret } from './env';
@@ -32,7 +33,8 @@ export function handleError(e: unknown): NextResponse {
     e instanceof GameStateError ||
     e instanceof SecretError ||
     e instanceof IntelError ||
-    e instanceof RegistrationError
+    e instanceof RegistrationError ||
+    e instanceof TemplateError
   ) {
     return errorResponse(e.message, e.status);
   }

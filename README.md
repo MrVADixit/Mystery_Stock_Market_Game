@@ -19,6 +19,10 @@ in the game is fictional and denominated in won.
 - **A small, fully tested rule engine.** Seven closed mathematical templates,
   not a programming language. Their numbers and stock references are
   configurable; their structure is fixed and regression-tested.
+- **Twelve ready-made games**, each with its own companies, its own arrangement
+  of mechanics and its own numbers — plus seeded scrambling, so a class that has
+  played before gets no head start. Administrators can edit any of them and save
+  their own.
 - **Mobile-first.** A participant can buy or sell in two taps.
 - **Classroom-ready.** A read-only projector board, a per-participant audit
   trail, and CSV exports of everything that happened.
@@ -70,7 +74,32 @@ npm run seed:demo
 
 ---
 
+## Twelve games, not one
+
+The library ships twelve complete templates — *Classic*, *Orbital Freight*,
+*Deep Harbour*, *Greenfield*, *Neon District*, *Permafrost*, *Clockwork*,
+*Monsoon*, *Red Sand*, *Paper Trail*, *Tidal Reach* and *Cascade* — across 84
+company names with no repeats, six to eight companies each and twelve to thirty
+rounds.
+
+Picking one is a click. Everything in it can then be edited: change any number,
+move a mechanic to a different company, add or remove companies, and save the
+result as your own template.
+
+**Scrambling is on by default.** It re-assigns which company runs which
+mechanic, repoints every cross-reference, varies all the numbers and sometimes
+reverses whether buying pushes a price up or down. Measured over 500 seeds, a
+company keeps its original mechanic 13.6% of the time against a chance baseline
+of 14.3% — so a returning player's memory is worth nothing. Seeds are
+deterministic, so the identical game can be reproduced for a second class.
+
+Details in [docs/GAME_TEMPLATES.md](docs/GAME_TEMPLATES.md).
+
+---
+
 ## The seven rules at a glance
+
+Every template arranges these differently. The table shows the classic one.
 
 | # | Default stock | Mechanic | Depends on |
 |---|---|---|---|
@@ -116,6 +145,7 @@ What each suite covers is described in
 | Document | What it covers |
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together and why |
+| [GAME_TEMPLATES.md](docs/GAME_TEMPLATES.md) | The twelve games, scrambling, and saving your own |
 | [GAME_HANDBOOK.md](docs/GAME_HANDBOOK.md) | The rules of the game itself |
 | [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Running a session, start to finish |
 | [PARTICIPANT_GUIDE.md](docs/PARTICIPANT_GUIDE.md) | A one-page guide for players |

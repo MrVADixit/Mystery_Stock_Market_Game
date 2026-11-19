@@ -31,6 +31,9 @@ export interface ConfigResponse {
     hasDisplayToken: boolean;
     displayToken: string | null;
     warningsAcknowledged: boolean;
+    templateId: string | null;
+    templateName: string | null;
+    scrambleSeed: number | null;
   };
 }
 
