@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    name: Types, lint and the rule engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Rule engine tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+        env:
+          # The build does not talk to the database, but Next evaluates the
+          # module graph, so the variables have to be present.
+          DATABASE_URL: postgres://msm:msm@127.0.0.1:5432/msm
+          AUTH_SECRET: ci-only-secret-value-not-used-anywhere-real
+
+  integration:
+    name: Whole game loop against a real database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: msm
+          POSTGRES_PASSWORD: msm
+          POSTGRES_DB: msm
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://msm:msm@127.0.0.1:5432/msm
+      AUTH_SECRET: ci-only-secret-value-not-used-anywhere-real
+      OWNER_EMAIL: owner@example.com
+      OWNER_PASSWORD: ownerpass123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations
+        run: npm run db:migrate
+      - name: Build
+        run: npm run build
+      - name: Start the server
+        run: |
+          npm start &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null 2>&1; then
+              echo "server is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not start in time"; exit 1
+      - name: API smoke test
+        run: npm run test:smoke

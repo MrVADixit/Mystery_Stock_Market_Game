@@ -1,179 +1,231 @@
+<div align="center">
+
 # Mystery Stock Market
 
-A competitive market-deduction game for a classroom. Seven fictional stocks move
-according to seven hidden mathematical rules. Participants join from their phones
-with a single link, trade across a configured number of timed rounds, buy
-intelligence, hide their tracks with secrets, and try to work out the mechanics
-before anybody else does.
+**Seven companies. Seven hidden rules. One classroom trying to work them out.**
 
-Inspired by Mystery Stock Market from *The Devil's Plan*, Season 3. Every figure
-in the game is fictional and denominated in won.
+A market-deduction game your students play on their phones while the live
+market goes up on the projector.
 
----
+[Play in 10 minutes](#get-it-running) ·
+[How the game works](docs/GAME_HANDBOOK.md) ·
+[For teachers](docs/ADMIN_GUIDE.md) ·
+[For students](docs/PARTICIPANT_GUIDE.md)
 
-## What it is
-
-- **A real multiplayer application**, not a demonstration. An authoritative
-  server decides when rounds close and what every price becomes; participants
-  trade against a PostgreSQL-backed ledger.
-- **A small, fully tested rule engine.** Seven closed mathematical templates,
-  not a programming language. Their numbers and stock references are
-  configurable; their structure is fixed and regression-tested.
-- **Twelve ready-made games**, each with its own companies, its own arrangement
-  of mechanics and its own numbers — plus seeded scrambling, so a class that has
-  played before gets no head start. Administrators can edit any of them and save
-  their own.
-- **Mobile-first.** A participant can buy or sell in two taps.
-- **Classroom-ready.** A read-only projector board, a per-participant audit
-  trail, and CSV exports of everything that happened.
-- **It works without AI.** The optional administrator assistant can explain and
-  calculate, but no price, rule, settlement, portfolio value or ranking ever
-  comes from a model.
+</div>
 
 ---
 
-## Quick start
+## The idea
+
+Every stock on this market moves according to a rule nobody has been told.
+
+One falls when everybody buys it. One copies whatever its neighbour did last
+round. One rewards the class for holding *exactly* the right number of shares.
+One ignores everything anyone does, forever.
+
+Students start with 100,000 won each and twenty-four rounds to figure it out.
+They can buy intelligence, hide their tracks with a secret, and watch the
+leaderboard move after every round. Whoever understands the mathematics first
+tends to win — which is rather the point.
+
+<div align="center">
+<img src="docs/images/display-board.png" alt="The classroom display board showing live prices, a concealed stock, the standings and the upcoming rule reveals" width="100%">
+<em>The projector view. One stock is hidden — somebody spent a secret on it.</em>
+</div>
+
+---
+
+## What your students see
+
+Two taps to trade. That is the whole interface.
+
+<div align="center">
+<img src="docs/images/player-phone.png" alt="The participant screen on a phone: round and countdown, total assets, and stock cards with buy and sell buttons" width="320">
+</div>
+
+No app to install, no account to create. They open a link, pick a name, and
+they are in. If a phone dies mid-game they sign back in with the same name and
+passphrase and everything is exactly where they left it.
+
+---
+
+## Get it running
+
+You need somewhere to host it and a PostgreSQL database. The one-click button
+sets up both, free, in about five minutes.
+
+<div align="center">
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/MrVADixit/mystery-stock-market)
+
+</div>
+
+Render reads the `render.yaml` in this repository, creates the database and the
+web service, and wires them together. It asks you for two things: an email and
+a password. Those become your teacher login.
+
+Then: sign in at `/admin` → **New session** → pick a game → **Open
+registration** → share the join link with your class.
+
+<details>
+<summary><strong>Prefer to run it on your own machine?</strong></summary>
+
+<br>
+
+Node 22 and PostgreSQL, then:
 
 ```bash
-git clone <this repository> && cd mystery-stock-market
 npm install
-```
-
-```bash
-cp .env.example .env
-```
-
-Fill in `.env` — at minimum `DATABASE_URL`, `AUTH_SECRET`, `OWNER_EMAIL` and
-`OWNER_PASSWORD`. Generate a secret with:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Create the schema and the owner account:
-
-```bash
+cp .env.example .env     # fill in DATABASE_URL and AUTH_SECRET
 npm run db:migrate
-```
-
-Run it:
-
-```bash
+npm run seed:demo        # prints you a ready-to-play game
 npm run dev
 ```
 
-Open <http://localhost:3000/admin>, sign in with the owner credentials, press
-**New session**, choose **Quick start**, press **TEST MY GAME**, then **Open
-registration** and **Start the game**. Participants go to `/join` with the code.
+On a classroom network this works with no hosting account at all — start it on
+your laptop and have students open `http://your-laptop-ip:3000/join`.
 
-To create a fully configured demonstration session in one command:
+Other options — Vercel, Fly, Docker, a school server — are in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-```bash
-npm run seed:demo
-```
+</details>
 
 ---
 
 ## Twelve games, not one
 
-The library ships twelve complete templates — *Classic*, *Orbital Freight*,
-*Deep Harbour*, *Greenfield*, *Neon District*, *Permafrost*, *Clockwork*,
-*Monsoon*, *Red Sand*, *Paper Trail*, *Tidal Reach* and *Cascade* — across 84
-company names with no repeats, six to eight companies each and twelve to thirty
-rounds.
+<img src="docs/images/template-picker.png" alt="The template gallery showing Classic Mystery Stock Market, Orbital Freight, Deep Harbour, Greenfield, Neon District and Permafrost" width="100%">
 
-Picking one is a click. Everything in it can then be edited: change any number,
-move a mechanic to a different company, add or remove companies, and save the
-result as your own template.
+Pick a game and the companies, the rules and the numbers are all set up for
+you. Each one plays differently on purpose:
 
-**Scrambling is on by default.** It re-assigns which company runs which
-mechanic, repoints every cross-reference, varies all the numbers and sometimes
-reverses whether buying pushes a price up or down. Measured over 500 seeds, a
-company keeps its original mechanic 13.6% of the time against a chance baseline
-of 14.3% — so a returning player's memory is worth nothing. Seeds are
-deterministic, so the identical game can be reproduced for a second class.
-
-Details in [docs/GAME_TEMPLATES.md](docs/GAME_TEMPLATES.md).
-
----
-
-## The seven rules at a glance
-
-Every template arranges these differently. The table shows the classic one.
-
-| # | Default stock | Mechanic | Depends on |
-|---|---|---|---|
-| 1 | Defense Steel | Holdings-based price movement | The **change** in total market-wide holdings |
-| 2 | Airtight Construction | Cross-stock price direction | Whether another stock **rose** last round |
-| 3 | Latter Electronics | Holdings sweet spot | **Current** total holdings against a band |
-| 4 | CoyoTech | Relative buying volume | **Gross purchases** versus another stock |
-| 5 | Open Security | Secret-dependent movement | Whether a secret covers another stock |
-| 6 | Seasonal Financial | Market-wide sentiment | How many stocks rose or fell |
-| 7 | Alt Entertainment | Fixed scripted price path | Nothing — written in advance |
-
-Rules 1, 3 and 4 use three *different* market variables that are deliberately
-never conflated. See [docs/MARKET_ENGINE.md](docs/MARKET_ENGINE.md).
-
-Full formulas with worked examples:
-[docs/SEVEN_RULE_TEMPLATES.md](docs/SEVEN_RULE_TEMPLATES.md).
-
----
-
-## Tests
-
-```bash
-npm test               # the engine: unit, integration and property-based
-npm run test:smoke     # the whole game loop through the HTTP API
-npm run test:acceptance# the §23 demonstration in real browsers
-npm run typecheck
-```
-
-The smoke and acceptance runs need a server and database running:
-
-```bash
-npm run build && npm start   # in one terminal
-npm run test:smoke           # in another
-```
-
-What each suite covers is described in
-[docs/RULE_TESTING.md](docs/RULE_TESTING.md).
-
----
-
-## Documentation
-
-| Document | What it covers |
+| | |
 |---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together and why |
-| [GAME_TEMPLATES.md](docs/GAME_TEMPLATES.md) | The twelve games, scrambling, and saving your own |
-| [GAME_HANDBOOK.md](docs/GAME_HANDBOOK.md) | The rules of the game itself |
-| [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Running a session, start to finish |
-| [PARTICIPANT_GUIDE.md](docs/PARTICIPANT_GUIDE.md) | A one-page guide for players |
-| [SEVEN_RULE_TEMPLATES.md](docs/SEVEN_RULE_TEMPLATES.md) | Every formula, with worked examples |
-| [RULE_TESTING.md](docs/RULE_TESTING.md) | The test suite and TEST MY GAME |
-| [MARKET_ENGINE.md](docs/MARKET_ENGINE.md) | Settlement, market variables, exact arithmetic |
-| [SECRET_MECHANIC.md](docs/SECRET_MECHANIC.md) | Secret timing and concealment |
-| [INTELLIGENCE.md](docs/INTELLIGENCE.md) | Intelligence, Pieces and disclosures |
-| [SECURITY.md](docs/SECURITY.md) | The security model |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Putting it online |
+| **Greenfield** | Gentle. Nobody gets wiped out in round three. The best first game |
+| **Neon District** | Loud and volatile. Expect somebody to crash a stock deliberately |
+| **Clockwork** | A capped rule, so manipulation has to be patient rather than sudden |
+| **Monsoon** | Buying pushes the price **up**. It breaks every instinct the others teach |
+| **Tidal Reach** | Six companies, twelve rounds, one lesson. A whole mechanic is missing |
+| **Cascade** | Two sweet spots the class cannot satisfy at once. The argument is the lesson |
+
+...and six more.
+
+### Played before? It still won't help you
+
+This was the hard part. A class that plays twice should find the second game
+just as hard as the first.
+
+So every session is **scrambled** by default: which company runs which rule is
+re-dealt, every cross-reference is repointed, all the numbers change, and about
+a third of the time the "everybody buying pushes it down" rule is quietly
+reversed.
+
+Measured over 500 shuffles, a company keeps its original rule **13.6%** of the
+time. Pure chance for seven companies is **14.3%**. A returning student's
+memory is worth, as near as makes no difference, nothing.
+
+→ [All twelve templates and how scrambling works](docs/GAME_TEMPLATES.md)
 
 ---
 
-## Technology
+## You can change anything
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · Recharts ·
-PostgreSQL 16 via `pg` · Server-sent events for realtime · Vitest and
-fast-check for tests · Playwright for the acceptance run.
+Rewrite a rule's numbers, move a mechanic to a different company, add or remove
+companies, rewrite what gets revealed and when — then save the whole thing as
+your own template and use it next term.
 
-The market engine under `src/engine` imports nothing from React, Next.js or the
-database. It is a pure function library, which is why it can be tested
-exhaustively and reused unchanged by the simulator, the readiness check and the
-live settlement path.
+<img src="docs/images/test-my-game.png" alt="The TEST MY GAME readiness report showing READY, 36 checks passed, and a table of rule probes" width="100%">
+
+Before you start, **TEST MY GAME** validates the configuration, probes every
+rule against figures worked out independently of the engine, and then actually
+simulates your whole game — your companies, your numbers — across fifteen
+scenarios. It tells you where a stock will hit the price floor and which
+settings will produce a 50% swing.
+
+A game is never called ready just because the configuration parses.
 
 ---
 
-## Licence and attribution
+## What the teacher sees
 
-Written as a complete working implementation of the Mystery Stock Market brief.
-The game concept is inspired by *The Devil's Plan*; this codebase is an
-independent implementation and ships no third-party assets.
+<img src="docs/images/settlement.png" alt="The settlement view showing, for every stock, the opening price, holdings, change, volumes, which rule branch fired and the final price" width="100%">
+
+Every price change, explained in words, for every round:
+
+> *Total holdings went from 12 to 15 shares, a change of +3. 3 × 200 won applied
+> downward = -600 won.*
+
+Plus a private minute-by-minute audit of any individual student — every trade
+with cash and holdings before and after — and CSV exports of everything when
+the game is over.
+
+---
+
+## Is it actually correct?
+
+That question matters more than usual here, because the entire game is a
+mathematical claim and students *will* find it if a price is wrong.
+
+| | |
+|---|---|
+| **218** engine tests | Every rule, every boundary, worked by hand |
+| **105** API checks | The whole game loop against a real database |
+| **70** browser checks | Four students trading at once, on real phones |
+
+All the money is whole-number arithmetic — no floating point anywhere — so
+prices are exact rather than nearly right. Every settlement stores the exact
+market snapshot it was computed from, and replaying that snapshot reproduces
+the same prices. The server owns the clock, so a student with a fast watch
+cannot trade late.
+
+→ [How the testing works](docs/RULE_TESTING.md) ·
+[How the market engine works](docs/MARKET_ENGINE.md)
+
+---
+
+## Everything else
+
+| Document | For |
+|---|---|
+| [Game handbook](docs/GAME_HANDBOOK.md) | The rules of the game itself |
+| [Teacher's guide](docs/ADMIN_GUIDE.md) | Running a session, start to finish |
+| [Student guide](docs/PARTICIPANT_GUIDE.md) | One page, hand it out |
+| [The twelve templates](docs/GAME_TEMPLATES.md) | And how scrambling keeps them fresh |
+| [The seven rules](docs/SEVEN_RULE_TEMPLATES.md) | Every formula, with worked examples |
+| [Market engine](docs/MARKET_ENGINE.md) | Settlement, exact arithmetic, replayability |
+| [Secrets](docs/SECRET_MECHANIC.md) · [Intelligence](docs/INTELLIGENCE.md) | The two special mechanics |
+| [Architecture](docs/ARCHITECTURE.md) · [Security](docs/SECURITY.md) | For developers |
+| [Deployment](docs/DEPLOYMENT.md) | Every hosting option |
+
+---
+
+## Built with
+
+Next.js 15 · React 19 · TypeScript · Tailwind · PostgreSQL · Recharts ·
+server-sent events for realtime · Vitest, fast-check and Playwright for the
+tests.
+
+The market engine in `src/engine` imports nothing from React, Next.js or the
+database. It is a pure function library, which is why the live game, the
+simulator, the readiness check and the test suite can all run the exact same
+code.
+
+It works completely without AI. There is an optional assistant to help a
+teacher tune a game, but no price, rule, settlement, portfolio value or
+leaderboard position ever comes from a model.
+
+---
+
+## Contributing
+
+Issues and pull requests are very welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md). If you run this with a class, I would
+genuinely love to hear how it went.
+
+## Licence
+
+[MIT](LICENSE). Use it, change it, run it with your students.
+
+Inspired by Mystery Stock Market from *The Devil's Plan*, Season 3. This is an
+independent implementation; all companies and figures are fictional.
