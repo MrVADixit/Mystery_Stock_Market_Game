@@ -1,0 +1,41 @@
+# One-click deployment to Render, including a PostgreSQL database.
+#
+# In Render: New → Blueprint → connect this repository. Render reads this
+# file, creates the database and the web service, wires DATABASE_URL between
+# them and generates AUTH_SECRET. You are asked for two values: the email and
+# password of the administrator account the first start will create.
+
+databases:
+  - name: mystery-stock-market-db
+    databaseName: msm
+    user: msm
+    plan: free
+
+services:
+  - type: web
+    name: mystery-stock-market
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    # Migrations are idempotent and record what they have applied, so running
+    # them on every start is safe and keeps the schema in step with the code.
+    startCommand: npm run db:migrate && npm start
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mystery-stock-market-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      # You are prompted for these two when the blueprint is created. They
+      # become your administrator sign-in at /admin.
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
