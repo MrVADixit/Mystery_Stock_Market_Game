@@ -31,6 +31,27 @@ jobs:
           DATABASE_URL: postgres://msm:msm@127.0.0.1:5432/msm
           AUTH_SECRET: ci-only-secret-value-not-used-anywhere-real
 
+  production-build:
+    name: Build the way a hosting platform builds it
+    runs-on: ubuntu-latest
+    # Platforms such as Render set NODE_ENV=production for the build as well
+    # as the runtime, which makes npm skip devDependencies. This job runs the
+    # exact commands render.yaml and the Dockerfile use, under that variable,
+    # so a missing build dependency fails here rather than on a deploy.
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgres://msm:msm@127.0.0.1:5432/msm
+      AUTH_SECRET: ci-only-secret-value-not-used-anywhere-real
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exactly as render.yaml does
+        run: npm ci --include=dev
+      - name: Build
+        run: npm run build
+
   integration:
     name: Whole game loop against a real database
     runs-on: ubuntu-latest

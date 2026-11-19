@@ -17,7 +17,10 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm ci && npm run build
+    # --include=dev is required: NODE_ENV=production below also applies to
+    # the build, and without it npm skips devDependencies, so typescript and
+    # tailwind are missing and every "@/..." import fails to resolve.
+    buildCommand: npm ci --include=dev && npm run build
     # Migrations are idempotent and record what they have applied, so running
     # them on every start is safe and keeps the schema in step with the code.
     startCommand: npm run db:migrate && npm start
@@ -37,5 +40,7 @@ services:
         sync: false
       - key: NODE_VERSION
         value: "22"
+      # Runtime only in effect: it is what marks the session cookies Secure.
+      # See the build command above for why the install must opt back in.
       - key: NODE_ENV
         value: production

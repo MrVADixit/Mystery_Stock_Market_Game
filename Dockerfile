@@ -5,7 +5,9 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Explicitly include devDependencies: the build needs typescript and tailwind,
+# and some platforms set NODE_ENV=production, which would skip them.
+RUN npm ci --include=dev
 COPY . .
 RUN npm run build
 
