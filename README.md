@@ -7,6 +7,9 @@
 A market-deduction game your students play on their phones while the live
 market goes up on the projector.
 
+[![CI](https://github.com/MrVADixit/Mystery_Stock_Market_Game/actions/workflows/ci.yml/badge.svg)](https://github.com/MrVADixit/Mystery_Stock_Market_Game/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/licence-MIT-8155B7.svg)](LICENSE)
+
 [Play in 10 minutes](#get-it-running) ·
 [How the game works](docs/GAME_HANDBOOK.md) ·
 [For teachers](docs/ADMIN_GUIDE.md) ·
@@ -57,7 +60,7 @@ sets up both, free, in about five minutes.
 
 <div align="center">
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/MrVADixit/mystery-stock-market)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/MrVADixit/Mystery_Stock_Market_Game)
 
 </div>
 
