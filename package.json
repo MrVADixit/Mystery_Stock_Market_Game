@@ -17,7 +17,8 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "test:smoke": "tsx tests/smoke-api.ts",
     "test:acceptance": "tsx tests/acceptance.ts",
-    "test:all": "vitest run && tsx tests/smoke-api.ts && tsx tests/acceptance.ts"
+    "test:all": "vitest run && tsx tests/smoke-api.ts && tsx tests/acceptance.ts",
+    "test:live": "tsx tests/live-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",

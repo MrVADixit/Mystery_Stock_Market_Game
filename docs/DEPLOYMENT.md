@@ -173,13 +173,40 @@ The first thing to watch under real load is database connections, not CPU.
 
 ## Verifying a deployment
 
+The quickest check needs no password at all:
+
+```bash
+BASE_URL=https://your-deployment npm run test:live
+```
+
+It confirms the site is served, that the database is connected and migrated
+(a wrong-password login returning 401 rather than 500 proves the query ran),
+that the security headers are set, and that unauthenticated callers are
+refused.
+
+To also exercise registering, trading, intelligence and secrets, create a
+throwaway session in the browser, open registration, and pass its join code:
+
+```bash
+BASE_URL=https://your-deployment JOIN_CODE=ABC123 npm run test:live
+```
+
+It registers two participants called "ZZ Live Check", so use a session you are
+happy to discard rather than the one your class will play.
+
+If you have the administrator password to hand, the fuller suite creates and
+plays a whole session by itself:
+
 ```bash
 BASE_URL=https://your-deployment npm run test:smoke
 ```
 
-83 checks covering the whole game loop. It creates a short throwaway session,
-plays it to completion and leaves it in the database; delete it from the
-administrator screen afterwards if you care.
+105 checks covering the whole game loop. It leaves its sessions in the
+database; archive them from the administrator screen afterwards if you care.
+
+> Behind an HTTPS proxy, Node's `fetch` ignores `HTTPS_PROXY` unless you run
+> with `NODE_USE_ENV_PROXY=1`. Without it you get a DNS error rather than a
+> proxy error, which is misleading.
 
 For the full browser demonstration:
 

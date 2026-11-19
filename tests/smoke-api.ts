@@ -651,3 +651,7 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+// Standalone script; the export marks it as a module so its top-level names
+// do not collide with the other test scripts.
+export {};
